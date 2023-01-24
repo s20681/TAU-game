@@ -10,6 +10,7 @@ public class Area {
     Coords finish_xy;
     AreaDifficulty difficulty;
     List<List<String>> area = new ArrayList<>();
+    List<Coords> visitedCoords = new ArrayList<>();
 
     public Area(int width, int height, AreaDifficulty difficulty) {
         this.width = width;
@@ -80,9 +81,9 @@ public class Area {
         if(difficulty.equals(AreaDifficulty.LOW)){
             amountToSet = (int) Math.ceil(fields / 25);
         } else if (difficulty.equals(AreaDifficulty.MEDIUM)){
-            amountToSet = (int) Math.ceil((fields * 3) / 25);
-        } else {
             amountToSet = (int) Math.ceil(fields / 5);
+        } else {
+            amountToSet = (int) Math.ceil(fields / 3);
         }
 
         //now we want to randomly set the obstacles and check if the board is still playable
@@ -94,29 +95,87 @@ public class Area {
                 amountToSet --;
             }
         }
+
+        Coords startCoords = findStartingCoord();
+        System.out.println(this.display());
+        System.out.println("Area state before checking if solvable first time");
+        if(!isSolvable(startCoords)){
+            System.out.println(this.display());
+            System.out.println("Reloading the obstacles because not solvable?");
+            removeObstacles();
+            visitedCoords.clear();
+            setObstacles();
+        }
     }
 
-    public void isSolvable(){
+    public void removeObstacles(){
+        for(List<String> row : area){
+            for(String s : row){
+                while(row.contains("O")){
+                    row.set(row.indexOf("O"), ".");
+                }
+            }
+        }
+    }
 
+    public boolean isSolvable(Coords startCoords){
+        List<Coords> neighbours = findNeighbourCoords(startCoords);
+        System.out.println("startcoord" + startCoords);
+        System.out.println("neighbours" + neighbours);
+        if(neighbours.contains(findFinishCoord())){
+            return true;
+        }
+        for(Coords coords : neighbours){
+            if(!visitedCoords.contains(coords)){
+                visitedCoords.add(startCoords);
+                return isSolvable(coords);
+            }
+        }
+
+        return false;
     }
 
     public Coords findStartingCoord(){
         int y = 0;
         for (List<String> row : area){
-            y++;
             if(row.contains("S")){
                 return new Coords(row.indexOf("S"), y);
             }
+            y++;
         }
         return null;
     }
 
-    public List<Coords> findNeighbourCoords(Coords coords){
+    public Coords findFinishCoord(){
+        int y = 0;
+        for (List<String> row : area){
+            if(row.contains("F")){
+                return new Coords(row.indexOf("F"), y);
+            }
+            y++;
+        }
+        return null;
+    }
+
+    public List<Coords> findNeighbourCoords(Coords startCoord){
         List<Coords> coordsList = new ArrayList<>();
-        //cztery opcje
-        //x - 1, x + 1, y - 1, y + 1
+        if(isMoveLegal(startCoord,'L')){
+            coordsList.add(new Coords(startCoord.x - 1, startCoord.y));
+        }
 
+        if(isMoveLegal(startCoord,'R')){
+            coordsList.add(new Coords(startCoord.x + 1, startCoord.y));
+        }
 
+        if(isMoveLegal(startCoord,'U')){
+            coordsList.add(new Coords(startCoord.x, startCoord.y - 1));
+        }
+
+        if(isMoveLegal(startCoord,'D')){
+            coordsList.add(new Coords(startCoord.x, startCoord.y + 1));
+        }
+
+        return coordsList;
     }
 
     public boolean isMoveLegal(Coords pointFrom, char move){
@@ -124,18 +183,18 @@ public class Area {
         if(move == 'L'){
             return pointFrom.x > 0 && !isObstacleOnCoord(pointFrom.x - 1, pointFrom.y);
         }else if(move == 'R'){
-            return pointFrom.x + 1 < width && !isObstacleOnCoord(pointFrom.x + 1, pointFrom.y);
+            return (pointFrom.x + 1) < width && !isObstacleOnCoord(pointFrom.x + 1, pointFrom.y);
         }else if(move == 'U'){
             return pointFrom.y > 0 && !isObstacleOnCoord(pointFrom.x, pointFrom.y - 1);
         }else if(move == 'D'){
-            return pointFrom.y + 1 < height && !isObstacleOnCoord(pointFrom.x, pointFrom.y - 1);
+            return (pointFrom.y + 1) < height && !isObstacleOnCoord(pointFrom.x, pointFrom.y + 1);
         }else {
             throw new IllegalArgumentException();
         }
     }
 
     public boolean isObstacleOnCoord(int x, int y){
-        return area.get(x).get(y).equals("O");
+        return area.get(y).get(x).equals("O");
     }
 
 
